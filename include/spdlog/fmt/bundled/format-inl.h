@@ -79,11 +79,8 @@ inline int fmt_snprintf(char *buffer, size_t size, const char *format, ...) {
 # define FMT_SNPRINTF fmt_snprintf
 #endif  // _MSC_VER
 
-#if defined(_WIN32) && defined(__MINGW32__) && !defined(__NO_ISOCEXT)
+// Don't use unbounded swprintf at all (unsafe), use snwprintf for all platforms instead
 # define FMT_SWPRINTF snwprintf
-#else
-# define FMT_SWPRINTF swprintf
-#endif // defined(_WIN32) && defined(__MINGW32__) && !defined(__NO_ISOCEXT)
 
 typedef void (*FormatFunc)(internal::buffer &, int, string_view);
 
