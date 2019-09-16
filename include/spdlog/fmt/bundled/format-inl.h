@@ -715,7 +715,19 @@ template <typename Double>
 FMT_FUNC typename std::enable_if<sizeof(Double) == sizeof(uint64_t), bool>::type
     grisu2_format(Double value, buffer &buf, core_format_specs specs) {
   FMT_ASSERT(value >= 0, "value is negative");
+
+#ifdef __ORBIS__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wfloat-equal"
+#endif
+
+  // zero has a stable/predictable representation in FP binary, so this should be fine
   if (value == 0) {
+
+#ifdef __ORBIS__
+#pragma clang diagnostic pop
+#endif
+
     gen_digits_params params = process_specs(specs, 1, buf);
     const size_t size = 1;
     buf[0] = '0';
