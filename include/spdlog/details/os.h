@@ -30,6 +30,7 @@
 #include <io.h>      // _get_osfhandle and _isatty support
 #include <process.h> //  _get_pid support
 #include <windows.h>
+#include <winapifamily.h>
 
 #ifdef __MINGW32__
 #include <share.h>
@@ -136,7 +137,7 @@ inline void prevent_child_fd(FILE *f)
 {
 
 #ifdef _WIN32
-#if !defined(__cplusplus_winrt) && !defined(WINDOWS_UWP) // SetHandleInformation() is missing on UWP
+#if !defined(__cplusplus_winrt) && !(defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_APP)) // SetHandleInformation() is missing on UWP
     auto file_handle = (HANDLE)_get_osfhandle(_fileno(f));
     if (!::SetHandleInformation(file_handle, HANDLE_FLAG_INHERIT, 0))
         throw spdlog_ex("SetHandleInformation failed", errno);
