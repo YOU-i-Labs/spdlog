@@ -44,7 +44,7 @@
 #ifdef __linux__
 #include <sys/syscall.h> //Use gettid() syscall under linux to get thread id
 
-#elif defined(__FreeBSD__) && !defined(__ORBIS__) // <sys/thr.h> is missing on Orbis
+#elif defined(__FreeBSD__) && !defined(__ORBIS__) && !defined(__PROSPERO__) // <sys/thr.h> is missing on Orbis
 #include <sys/thr.h> //Use thr_self() syscall under FreeBSD to get thread id
 #endif
 
@@ -77,7 +77,7 @@ inline std::tm localtime(const std::time_t &time_tt) SPDLOG_NOEXCEPT
 #ifdef _WIN32
     std::tm tm;
     localtime_s(&tm, &time_tt);
-#elif defined(__ORBIS__)
+#elif defined(__ORBIS__) || defined(__PROSPERO__)
     std::tm tm;
     localtime_s(&time_tt, &tm); // C11-compliant API (note swapped arguments compared to Windows localtime_s version)
 #else
@@ -99,7 +99,7 @@ inline std::tm gmtime(const std::time_t &time_tt) SPDLOG_NOEXCEPT
 #ifdef _WIN32
     std::tm tm;
     gmtime_s(&tm, &time_tt);
-#elif defined(__ORBIS__)
+#elif defined(__ORBIS__) || defined(__PROSPERO__)
     std::tm tm;
     gmtime_s(&time_tt, &tm); // C11-compliant API (note swapped arguments compared to Windows gmtime_s version)
 #else
@@ -142,7 +142,7 @@ inline void prevent_child_fd(FILE *f)
     if (!::SetHandleInformation(file_handle, HANDLE_FLAG_INHERIT, 0))
         throw spdlog_ex("SetHandleInformation failed", errno);
 #endif
-#elif defined(__ORBIS__) // F_SETFD and FD_CLOEXEC are undefined on Orbis
+#elif defined(__ORBIS__) || defined(__PROSPERO__) // F_SETFD and FD_CLOEXEC are undefined on Orbis
     (void) f; // unused argument
 #else
     auto fd = fileno(f);
@@ -281,7 +281,7 @@ inline int utc_minutes_offset(const std::tm &tm = details::os::localtime())
     return offset;
 #else
 
-#if defined(sun) || defined(__sun) || defined(_AIX) || defined(__ORBIS__) || defined(__native_client__)
+#if defined(sun) || defined(__sun) || defined(_AIX) || defined(__ORBIS__) || defined(__PROSPERO__) || defined(__native_client__)
     // 'tm_gmtoff' field is BSD extension and it's missing on SunOS/Solaris
     struct helper
     {
@@ -331,7 +331,7 @@ inline size_t _thread_id() SPDLOG_NOEXCEPT
 #define SYS_gettid __NR_gettid
 #endif
     return static_cast<size_t>(syscall(SYS_gettid));
-#elif defined(__FreeBSD__) && !defined(__ORBIS__) // Orbis does not have the thr_self() API
+#elif defined(__FreeBSD__) && !defined(__ORBIS__) && !defined(__PROSPERO__) // Orbis does not have the thr_self() API
     long tid;
     thr_self(&tid);
     return static_cast<size_t>(tid);
@@ -398,7 +398,7 @@ inline bool is_color_terminal() SPDLOG_NOEXCEPT
 {
 #ifdef _WIN32
     return true;
-#elif defined(__ORBIS__)
+#elif defined(__ORBIS__) || defined(__PROSPERO__)
     return false; // no color on Orbis
 #else
     static constexpr const char *Terms[] = {
@@ -423,7 +423,7 @@ inline bool in_terminal(FILE *file) SPDLOG_NOEXCEPT
 
 #ifdef _WIN32
     return _isatty(_fileno(file)) != 0;
-#elif defined(__ORBIS__)
+#elif defined(__ORBIS__) || defined(__PROSPERO__)
     (void) file; // unused argument
     return false; // no tty on Orbis
 #else
