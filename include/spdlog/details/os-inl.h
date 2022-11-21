@@ -20,12 +20,14 @@
 #include <array>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <stdio.h>
 
 #ifdef _WIN32
 
 #    include <io.h>      // _get_osfhandle and _isatty support
 #    include <process.h> //  _get_pid support
 #    include <spdlog/details/windows_include.h>
+#include <winapifamily.h>
 
 #    ifdef __MINGW32__
 #        include <share.h>
@@ -87,6 +89,9 @@ SPDLOG_INLINE std::tm localtime(const std::time_t &time_tt) SPDLOG_NOEXCEPT
 #ifdef _WIN32
     std::tm tm;
     ::localtime_s(&tm, &time_tt);
+#elif defined(__ORBIS__) || defined(__PROSPERO__)
+    std::tm tm;
+    ::localtime_s(&time_tt, &tm); // C11-compliant API (note swapped arguments compared to Windows localtime_s version)
 #else
     std::tm tm;
     ::localtime_r(&time_tt, &tm);
@@ -106,6 +111,9 @@ SPDLOG_INLINE std::tm gmtime(const std::time_t &time_tt) SPDLOG_NOEXCEPT
 #ifdef _WIN32
     std::tm tm;
     ::gmtime_s(&tm, &time_tt);
+#elif defined(__ORBIS__) || defined(__PROSPERO__)
+    std::tm tm;
+    ::gmtime_s(&time_tt, &tm); // C11-compliant API (note swapped arguments compared to Windows gmtime_s version)
 #else
     std::tm tm;
     ::gmtime_r(&time_tt, &tm);
@@ -231,13 +239,13 @@ SPDLOG_INLINE size_t filesize(FILE *f)
 
 #else // unix
 // OpenBSD and AIX doesn't compile with :: before the fileno(..)
-#    if defined(__OpenBSD__) || defined(_AIX)
+#    if defined(__OpenBSD__) || defined(_AIX) || defined(__native_client__)
     int fd = fileno(f);
 #    else
     int fd = ::fileno(f);
 #    endif
 // 64 bits(but not in osx or cygwin, where fstat64 is deprecated)
-#    if (defined(__linux__) || defined(__sun) || defined(_AIX)) && (defined(__LP64__) || defined(_LP64))
+#    if (defined(__linux__) || defined(__sun) || defined(_AIX)) && (defined(__LP64__) || defined(_LP64)) && !defined(__native_client__)
     struct stat64 st;
     if (::fstat64(fd, &st) == 0)
     {
@@ -286,7 +294,7 @@ SPDLOG_INLINE int utc_minutes_offset(const std::tm &tm)
     return offset;
 #else
 
-#    if defined(sun) || defined(__sun) || defined(_AIX) || (!defined(_BSD_SOURCE) && !defined(_GNU_SOURCE))
+#    if defined(sun) || defined(__sun) || defined(_AIX) || (!defined(_BSD_SOURCE) && !defined(_GNU_SOURCE)) || defined(__ORBIS__) || defined(__PROSPERO__) || defined(__native_client__)
     // 'tm_gmtoff' field is BSD extension and it's missing on SunOS/Solaris
     struct helper
     {
@@ -343,7 +351,7 @@ SPDLOG_INLINE size_t _thread_id() SPDLOG_NOEXCEPT
     int retval = pthread_getthrds_np(&pt, PTHRDSINFO_QUERY_TID, &buf, sizeof(buf), NULL, &reg_size);
     int tid = (!retval) ? buf.__pi_tid : 0;
     return static_cast<size_t>(tid);
-#elif defined(__DragonFly__) || defined(__FreeBSD__)
+#elif defined(__DragonFly__) || defined(__FreeBSD__) && !defined(__ORBIS__) && !defined(__PROSPERO__) // Orbis does not have the thr_self() API
     return static_cast<size_t>(::pthread_getthreadid_np());
 #elif defined(__NetBSD__)
     return static_cast<size_t>(::_lwp_self());
@@ -413,6 +421,8 @@ SPDLOG_INLINE bool is_color_terminal() SPDLOG_NOEXCEPT
 {
 #ifdef _WIN32
     return true;
+#elif defined(__ORBIS__) || defined(__PROSPERO__)
+    return false; // no color on Orbis
 #else
 
     static const bool result = []() {
@@ -445,6 +455,11 @@ SPDLOG_INLINE bool in_terminal(FILE *file) SPDLOG_NOEXCEPT
 
 #ifdef _WIN32
     return ::_isatty(_fileno(file)) != 0;
+#elif defined(__ORBIS__) || defined(__PROSPERO__)
+    (void) file; // unused argument
+    return false; // no tty on Orbis
+#elif defined(__native_client__)
+    return isatty(fileno(file)) != 0;
 #else
     return ::isatty(fileno(file)) != 0;
 #endif
@@ -595,6 +610,9 @@ std::string SPDLOG_INLINE getenv(const char *field)
     bool ok = ::getenv_s(&len, buf, sizeof(buf), field) == 0;
     return ok ? buf : std::string{};
 #    endif
+#elif defined(__ORBIS__) || defined(__PROSPERO__)
+    (void) field; // unused argument
+    return std::string{};
 #else // revert to getenv
     char *buf = ::getenv(field);
     return buf ? buf : std::string{};
