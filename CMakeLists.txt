@@ -134,29 +134,25 @@ if(SPDLOG_BUILD_SHARED OR BUILD_SHARED_LIBS)
         configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.rc.in ${CMAKE_CURRENT_BINARY_DIR}/version.rc @ONLY)
         list(APPEND SPDLOG_SRCS ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
     endif()
-    add_library(spdlog SHARED ${SPDLOG_SRCS} ${SPDLOG_ALL_HEADERS})
-    target_compile_definitions(spdlog PUBLIC SPDLOG_SHARED_LIB)
+    add_library(spdlog INTERFACE)
+    target_compile_definitions(spdlog INTERFACE SPDLOG_SHARED_LIB)
     if(MSVC)
         target_compile_options(spdlog PUBLIC 
             $<$<AND:$<CXX_COMPILER_ID:MSVC>,$<NOT:$<COMPILE_LANGUAGE:CUDA>>>:/wd4251 /wd4275>)
     endif()
     if(NOT SPDLOG_FMT_EXTERNAL AND NOT SPDLOG_FMT_EXTERNAL_HO)
-        target_compile_definitions(spdlog PRIVATE FMT_EXPORT PUBLIC FMT_SHARED)
+        target_compile_definitions(spdlog INTERFACE FMT_EXPORT PUBLIC FMT_SHARED)
     endif()
 else()
-    add_library(spdlog STATIC ${SPDLOG_SRCS} ${SPDLOG_ALL_HEADERS})
+    add_library(spdlog INTERFACE)
 endif()
 
 add_library(spdlog::spdlog ALIAS spdlog)
 
-target_compile_definitions(spdlog PUBLIC SPDLOG_COMPILED_LIB)
-target_include_directories(spdlog PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
+target_include_directories(spdlog INTERFACE "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
                                          "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
-target_link_libraries(spdlog PUBLIC Threads::Threads)
+target_link_libraries(spdlog INTERFACE Threads::Threads)
 spdlog_enable_warnings(spdlog)
-
-set_target_properties(spdlog PROPERTIES VERSION ${SPDLOG_VERSION} SOVERSION ${SPDLOG_VERSION_MAJOR})
-set_target_properties(spdlog PROPERTIES DEBUG_POSTFIX d)
 
 if(COMMAND target_precompile_headers AND SPDLOG_ENABLE_PCH)
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/pch.h.in ${PROJECT_BINARY_DIR}/spdlog_pch.h @ONLY)
@@ -180,15 +176,15 @@ if(SPDLOG_FMT_EXTERNAL OR SPDLOG_FMT_EXTERNAL_HO)
     if(NOT TARGET fmt::fmt)
         find_package(fmt CONFIG REQUIRED)
     endif()
-    target_compile_definitions(spdlog PUBLIC SPDLOG_FMT_EXTERNAL)
+    target_compile_definitions(spdlog INTERFACE SPDLOG_FMT_EXTERNAL)
     target_compile_definitions(spdlog_header_only INTERFACE SPDLOG_FMT_EXTERNAL)
 
     # use external fmt-header-nly
     if(SPDLOG_FMT_EXTERNAL_HO)
-        target_link_libraries(spdlog PUBLIC fmt::fmt-header-only)
+        target_link_libraries(spdlog INTERFACE fmt::fmt-header-only)
         target_link_libraries(spdlog_header_only INTERFACE fmt::fmt-header-only)
     else() # use external compile fmt
-        target_link_libraries(spdlog PUBLIC fmt::fmt)
+        target_link_libraries(spdlog INTERFACE fmt::fmt)
         target_link_libraries(spdlog_header_only INTERFACE fmt::fmt)
     endif()
 
@@ -199,7 +195,7 @@ endif()
 # Add required libraries for Android CMake build
 # ---------------------------------------------------------------------------------------
 if (ANDROID)
-    target_link_libraries(spdlog PUBLIC log)
+    target_link_libraries(spdlog INTERFACE log)
     target_link_libraries(spdlog_header_only INTERFACE log)
 endif ()
 
@@ -219,7 +215,7 @@ foreach(
     SPDLOG_NO_ATOMIC_LEVELS
     SPDLOG_DISABLE_DEFAULT_LOGGER)
     if(${SPDLOG_OPTION})
-        target_compile_definitions(spdlog PUBLIC ${SPDLOG_OPTION})
+        target_compile_definitions(spdlog INTERFACE ${SPDLOG_OPTION})
         target_compile_definitions(spdlog_header_only INTERFACE ${SPDLOG_OPTION})
     endif()
 endforeach()
